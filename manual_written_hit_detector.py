@@ -7,6 +7,9 @@ import pathlib
 
 
 class mmaProcessing:
+
+
+    
     def __init__(self, video_path, model_path):
         self.video_path = video_path
         self.model_path = model_path
@@ -78,18 +81,7 @@ class mmaProcessing:
                 break
 
             # Run pose detection on the frame
-
-            # Draw keypoints and/or process hits here if needed
-            """
-            
-            for r in results:
-                if r.keypoints is not None:
-                    for person in r.keypoints.xy:
-                        for x, y in person:
-                            cv2.circle(frame, (int(x), int(y)), 3, (0, 255, 0), -1)
-
-            """
-            if frame_count % 3 == 0:
+            if frame_count % 20 == 0:
                 # Run pose detection on the frame
                 results = self.model.predict(source=frame, conf=0.4, save=False, verbose=False)
                 for r in results:
@@ -99,11 +91,11 @@ class mmaProcessing:
                     self.total_fighter1_hits += fighter1_hits
                     self.total_fighter2_hits += fighter2_hits
                     
-                    # Display total hits for the entire video
-                    cv2.putText(r.orig_img, f"Total - Fighter 1: {self.total_fighter1_hits}", (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                    cv2.putText(r.orig_img, f"Total - Fighter 2: {self.total_fighter2_hits}", (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-                    
                     frame = r.orig_img
+             
+             # Always draw the stable overlay on every frame
+                #print(f"Frame {frame_count}: Drawing overlay - F1: {self.total_fighter1_hits}, F2: {self.total_fighter2_hits}")
+            self._draw_stable_overlay(frame, self.total_fighter1_hits, self.total_fighter2_hits)
                 
             # Show the frame
             cv2.imshow("Video", frame)
@@ -133,7 +125,7 @@ class mmaProcessing:
         head = [0, 1, 2, 3, 4]
         striking_tools = [5, 6, 7, 8, 13, 14, 15, 16]
         
-        # Initialize hit counters for each fighter
+        # Initialize hit counters
         fighter1_hits = 0
         fighter2_hits = 0
         
@@ -171,7 +163,7 @@ class mmaProcessing:
                                 fighter1_x > 0 and fighter1_y > 0 and fighter2_x > 0 and fighter2_y > 0):
                                 
                                 distance = math.sqrt((fighter1_x - fighter2_x)**2 + (fighter1_y - fighter2_y)**2)
-                                if distance < 50:
+                                if distance < 1:
                                     print("Fighter 1 hit Fighter 2!")
                                     fighter1_hits += 1
                                     # draw a line between the two points (green for fighter1 hits)
@@ -209,11 +201,29 @@ class mmaProcessing:
                                     # draw a line between the two points (red for fighter2 hits)
                                     cv2.line(r.orig_img, (int(fighter2_x), int(fighter2_y)), (int(fighter1_x), int(fighter1_y)), (0, 0, 255), 2)
         
-        # Display hit counters on the image
-        cv2.putText(r.orig_img, f"Fighter 1 Hits: {fighter1_hits}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        cv2.putText(r.orig_img, f"Fighter 2 Hits: {fighter2_hits}", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-        
         return fighter1_hits, fighter2_hits
+    
+    def _draw_stable_overlay(self, frame, fighter1_hits, fighter2_hits):
+        """Draw stable overlay that doesn't flicker"""
+        # Simple approach - just draw text directly
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.7
+        thickness = 2
+        
+        # Draw background rectangle
+        cv2.rectangle(frame, (10, 10), (300, 120), (0, 0, 0), -1)
+        
+        # Fighter 1 hits (green)
+        text1 = f"Fighter 1 Hits: {fighter1_hits}"
+        cv2.putText(frame, text1, (20, 40), font, font_scale, (0, 255, 0), thickness)
+        
+        # Fighter 2 hits (red)
+        text2 = f"Fighter 2 Hits: {fighter2_hits}"
+        cv2.putText(frame, text2, (20, 80), font, font_scale, (0, 0, 255), thickness)
+        
+        # Add total hits
+        text3 = f"Total: {fighter1_hits + fighter2_hits}"
+        cv2.putText(frame, text3, (20, 110), font, 0.5, (255, 255, 255), 1)
             
 """
     def processImageIndividually(self, image_path):
@@ -254,6 +264,8 @@ def main():
     image_path = "path_to_image.jpg"
 
     mma_processor = mmaProcessing(videoPath, model_path)
+
+    
     
     # Uncomment the following line to train the model
     #mma_processor.trainModel()
@@ -282,5 +294,4 @@ if __name__ == "__main__":
 
 
         
-
 
